@@ -21,7 +21,7 @@ class Cube:
             for src, dst in move_dict.items():
                 self.state[dst] = old_state[src]
 
-    def is_solved(self):
+    def is_solved(self, correct_cube):
         return all(self.state[i] == self.state[i - i % 3] for i in range(54))
 
     def copy(self):
@@ -38,12 +38,12 @@ class Cube:
         s = self.state  
 
         color_map = {
-            'U': '🟨',  
-            'D': '⬜',  
-            'F': '🟥',  
-            'B': '🟧',  
-            'L': '🟦',  
-            'R': '🟩',  
+            'D': '🟨',  
+            'U': '⬜',  
+            'R': '🟥',  
+            'L': '🟧',  
+            'B': '🟦',  
+            'F': '🟩',  
         }
 
         def face(rows):
@@ -72,43 +72,55 @@ class Cube:
         print()
 
 
+def custom_solution(solver, cube):
+    solved_cube = solver[0]
+    solved_pieces = solver[1]
+    for pos in solved_pieces:
+        if cube.state[pos] != solved_cube.state[pos]:
+            return False
+    return True
 
 MOVES_LIST = ["R", "R'", "R2", "L", "L'", "L2", "U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2"]
 
-def solve_dfs(cube, max_depth=6):
-    def dfs(cube, path, depth):
-        if cube.is_solved():
-            return path
-        if depth == 0:
-            return None
-        for move in MOVES_LIST:
-            if path and move[0] == path[-1][0]:  # avoid repeating same face (e.g., R R')
-                continue
-            new_cube = cube.copy()
-            new_cube.rotate(move)
-            result = dfs(new_cube, path + [move], depth - 1)
-            if result:
-                return result
+def solve_dfs(solver, cube, solution, depth_remaining):
+    if custom_solution(solver, cube):
+        return solution.strip()
+    if depth_remaining == 0:
         return None
-
-    for depth in range(1, max_depth + 1):
-        print(f"Searching depth {depth}...")
-        result = dfs(cube, [], depth)
-        if result:
+    for move in MOVES_LIST:
+        new_cube = cube.copy()
+        new_cube.rotate(move)
+        result = solve_dfs(solver, new_cube, solution + " " + move, depth_remaining - 1)
+        if result is not None:
             return result
     return None
 
-cube = Cube()
-scramble = "L D' F2 B R"
-cube.rotate(scramble)
+def solve_iidfs(solver, cube, depth_limit):
+    for depth in range(depth_limit+1):
+        solution = solve_dfs(solver, cube, "", depth)
+        if solution != None:
+            return solution
+    return None
 
-cube.display_cube()
-
-solution = solve_dfs(cube, max_depth=5)
-if solution:
-    print("Solution found:", " ".join(solution))
-    cube.rotate(" ".join(solution))
+def main():
+    cube = Cube()
+    scramble = "R2 B L' F R"
+    cube.rotate(scramble)
     cube.display_cube()
-else:
-    print("No solution found within depth limit.")
+
+    solved_cube = Cube("UUUUUUUUULLLLLLLLLFFFFFFFFFRRRRRRRRRBBBBBBBBBDDDDDDDDD")
+    solved_pieces = [12, 13, 14, 15, 16, 17, 21, 24, 41, 44, 45, 48, 51]
+    solver = (solved_cube, solved_pieces)
+
+    solution = solve_iidfs(solver, cube, 5)
+
+    if solution:
+        print("Solution found:" + solution)
+        cube.rotate(solution)
+        cube.display_cube()
+    else:
+        print("No solution found within depth limit.")
+
+if __name__ == "__main__":
+    main()
 
