@@ -76,7 +76,10 @@ class Cube:
             'L': '🟧',  
             'B': '🟦',  
             'F': '🟩',
-            'X': '⬛'  
+            'X': '⬛',
+            'o': '🟫',
+            'x': '🟪',
+            'y': '🔳'
         }
 
         def face(rows):
@@ -157,6 +160,70 @@ def mask_cube(if_cube, mask):
     cube = Cube("".join(state))
     return cube
 
+def g0_mask_cube(if_cube, mask):
+    state = []
+    for i in if_cube.state:
+        if i in mask:
+            state.append('o')
+        else:
+            state.append("X")
+    cube = Cube("".join(state))
+    return cube
+
+def g1_mask_cube(if_cube, co_pieces, eo_ud_pieces, eo_e_pieces):
+    state = []
+    for i in if_cube.state:
+        if i in co_pieces or i in eo_ud_pieces:
+            state.append("x")
+        elif i in eo_e_pieces:
+            state.append("y")
+        else:
+            state.append("X")
+    cube = Cube("".join(state))
+    return cube
+
+def g2_corner_mask(if_cube, corners):
+    state = []
+    for i in if_cube.state:
+        if i in corners:
+            state.append(ifcube_idx_to_fcube_face(i))
+        else:
+            state.append("X")
+    cube = Cube("".join(state))
+    return cube
+
+def g2_mask_cube(if_cube):
+    # Map each face to its starting index
+    face_base = {'U': 0, 'L': 9, 'F': 18, 'R': 27, 'B': 36, 'D': 45}
+
+    # Define corner permutation positions (face-relative)
+    cp_facelets = [0, 2, 6, 8]  # edges of the face (not centers)
+    cp_faces = ['U', 'D', 'F', 'B', 'L', 'R']
+    cp_pieces = [face_base[f] + i for f in cp_faces for i in cp_facelets]
+
+    # Define edge permutation positions on F/B/L/R faces only
+    ep_facelets = [1, 3, 5, 7]  # side edge stickers
+    ep_faces = ['F', 'B', 'L', 'R']
+    ep_pieces = [face_base[f] + i for f in ep_faces for i in ep_facelets]
+
+    # Function to simplify opposite face color collapse
+    def collapse_face(f):
+        return {'B': 'F', 'L': 'R'}.get(f, f)
+
+    # Create the masked state
+    masked = []
+    for idx in if_cube.state:
+        face = "ULFRBD"[idx // 9]  # get face from index
+        if idx in cp_pieces:
+            masked.append(face)
+        elif idx in ep_pieces:
+            masked.append(collapse_face(face))
+        else:
+            masked.append("X")
+    return Cube(masked)
+
+
+
 def gen_pruning_table(solved_states, depth, moveset):
     pruning_table = {}
     previous_frontier = solved_states[:]
@@ -175,13 +242,12 @@ def gen_pruning_table(solved_states, depth, moveset):
                     pruning_table[new_state] = i
                     frontier.append(new_state)
         previous_frontier = frontier
-        print(f"Depth {i} - States {len(pruning_table)}")
+        #print(f"Depth {i} - States {len(pruning_table)}")
     return pruning_table
 
 
 
-def solve_dfs_with_pruning(solver, cube, solution, depth_remaining, mask):
-    # Check if the cube is solved (mask for FB)
+def solve_dfs_with_pruning(solver, cube, solution, depth_remaining):
     if solver.is_solved(cube):
         return " ".join(solution)
     if depth_remaining == 0:
@@ -198,16 +264,16 @@ def solve_dfs_with_pruning(solver, cube, solution, depth_remaining, mask):
         new_cube = cube.copy()
         new_cube.rotate(move)
         solution.append(move)
-        result = solve_dfs_with_pruning(solver, new_cube, solution, depth_remaining - 1, mask)
+        result = solve_dfs_with_pruning(solver, new_cube, solution, depth_remaining - 1)
         if result is not None:
             return result
         solution.pop()
     return None
 
-def solve_iidfs_pruning(solver, cube, depth_limit, mask):
+def solve_iidfs_pruning(solver, cube, depth_limit):
     for depth in range(1, depth_limit + 1):
         solution = []
-        result = solve_dfs_with_pruning(solver, cube.copy(), solution, depth, mask)
+        result = solve_dfs_with_pruning(solver, cube.copy(), solution, depth)
         if result is not None:
             return result
     return None
@@ -220,48 +286,207 @@ def fb_is_solved(cube):
     fb_pieces = [12,13,14,15,16,17,21,24,41,44,45,48,51]
     return all(cube.state[i] == cube.index_facelet_cube(i) for i in fb_pieces)
 
+def g0_is_solved(cube):
+    eo_pieces = [1,3,5,7,21,23,39,41,46,48,50,52]
+    return all(cube.state[i] == 'o' for i in eo_pieces)
+
+def g1_is_solved(cube):
+    co_pieces = [0, 2, 6, 8, 45, 47, 51, 53]
+    eo_ud_pieces = [1, 3, 5, 7, 46, 48, 50, 52]
+    eo_e_pieces = [21, 23, 39, 41]
+
+    return (
+        all(cube.state[i] == 'x' for i in co_pieces + eo_ud_pieces)
+        and all(cube.state[j] == 'y' for j in eo_e_pieces)
+    )
+
+def g3_is_solved(cube):
+    return all(cube.state[i] == cube.state[i - i % 3] for i in range(54))
+
+
+
+
 def main():
     mu_moves = ["M", "M'", "M2", "U", "U'", "U2"]
     htm_moves = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "L", "L'", "L2", "R", "R'", "R2"]
     htmrwm_moves = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "r", "r'", "r2", "R", "R'", "R2", "M", "M'", "M2"]
-    fb_pruning_depth = 5
-    
+
+
+    ### G0 -> G1 ###
+    g0_moves = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "L", "L'", "L2", "R", "R'", "R2"]
+
+    g0_pruning_depth = 7
 
     cube = Cube()
-    scramble = "U2 F2 D' F B2 L2 U' L' U' L2 B F' D2 F2 U' B2 L' F' D U' L' B2 L2 F B' D U' F' U2 D'"
+    scramble = "F2 D' F L' D L' B2 U' R2 U2 L2 F2 U2 F' R' L2 F' D' F' R F2 U R2 L' B2 D B' L D' B'"
     cube.rotate(scramble)
     cube.display_cube()
+    print("SCRAMBLE")
 
     if_state = []
-
     for i in range(54):
         if_state.append(i)
-    if_cube = Cube(if_state)
+    solved_if_cube = Cube(if_state)
 
-    fb_pieces = [12,13,14,15,16,17,21,24,41,44,45,48,51]
-    masked_cube = mask_cube(if_cube, fb_pieces)
-    masked_cube.display_cube()
+    eo_pieces = [1,3,5,7,21,23,39,41,46,48,50,52]
+    g0_masked_cube = g0_mask_cube(solved_if_cube, eo_pieces)
+    #g0_masked_cube.display_cube()
 
-    fb_pruning_table = gen_pruning_table(["".join(masked_cube.state)], fb_pruning_depth, htm_moves)
+    g0_pruning_table = gen_pruning_table(["".join(g0_masked_cube.state)], g0_pruning_depth, g0_moves)
 
-    masked_cube.rotate(scramble)
-    masked_cube.display_cube()
+    g0_masked_cube.rotate(scramble)
+    #g0_masked_cube.display_cube()
 
-    fb_solver = Solver(fb_is_solved, htm_moves, fb_pruning_table, fb_pruning_depth)
+    g0_solver = Solver(g0_is_solved, g0_moves, g0_pruning_table, g0_pruning_depth)
 
     t1 = default_timer()
-    solution = solve_iidfs_pruning(fb_solver, masked_cube, 10, fb_pieces)
-    t2 = default_timer()
+    g1_solution = solve_iidfs_pruning(g0_solver, g0_masked_cube, 10)
 
+    if g1_solution:
+        cube.rotate(str(g1_solution))
+        cube.display_cube()
+        print("Reduce to G1:")
+        print(g1_solution)
 
-    if solution:
-        print("Solution:", solution)
-        masked_cube.rotate(solution)
-        masked_cube.display_cube()
     else:
         print("No solution found.")
 
-    print(f"Time Elapsed: {t2 - t1}s")
+
+
+
+    # ### G1 -> G2 ###
+    g1_moves = ["U", "U'", "U2", "D", "D'", "D2", "L", "L'", "L2", "R", "R'", "R2", "F2", "B2"]
+    g1_pruning_depth = 5
+
+    co_pieces = [0,2,6,8,45,47,51,53]
+    eo_ud_pieces = [1,3,5,7,46,48,50,52]
+    eo_e_pieces = [21,23,39,41]
+
+    g1_masked_cube = g1_mask_cube(solved_if_cube, co_pieces, eo_ud_pieces, eo_e_pieces)
+    #g1_masked_cube.display_cube()
+
+    g1_pruning_table = gen_pruning_table(["".join(g1_masked_cube.state)], g1_pruning_depth, g1_moves)
+
+    g1_masked_cube.rotate(scramble + " " + str(g1_solution))
+    #g1_masked_cube.display_cube()
+
+    g1_solver = Solver(g1_is_solved, g1_moves, g1_pruning_table, g1_pruning_depth)
+
+    g2_solution = solve_iidfs_pruning(g1_solver, g1_masked_cube, 10)
+
+    if g2_solution:
+        cube.rotate(str(g2_solution))
+        cube.display_cube()
+        print("Reduce to G2:")
+        print(g2_solution)
+    else:
+        print("No solution found.")
+
+
+
+    ### G2 -> G3 ###
+    g2_moves = ["U", "D", "L2", "R2", "F2", "B2"]
+    g2_pruning_depth = 5
+
+    corners = [0,2,6,8,9,11,15,17,18,20,24,26,27,29,33,35,36,38,42,44,45,47,51,53]
+
+    g2_corner_table = gen_pruning_table(["".join(g2_corner_mask(solved_if_cube, corners).state)], 10, ["U2", "D2", "F2", "B2", "L2", "R2"])
+    g2_masked_cube = g2_mask_cube(solved_if_cube)
+    #g2_masked_cube.display_cube()
+
+    solved_states_viewed_in_g2 = list(gen_pruning_table(["".join(g2_masked_cube.state)], 10, ["U2", "D2", "F2", "B2", "L2", "R2"]).keys())
+    g2_pruning_table = gen_pruning_table(solved_states_viewed_in_g2, g2_pruning_depth, g2_moves)
+    g2_masked_cube.rotate(scramble + " " + str(g1_solution) + " " + str(g2_solution))
+    print(solved_states_viewed_in_g2)
+    def g2_is_solved(cube):
+        if cube.state not in list(g2_corner_table.keys()):
+            return False
+        state = "".join(cube.state)
+        return g2_pruning_table.get(state, -1) == 0
+
+
+    g2_solver = Solver(g2_is_solved, g2_moves, g2_pruning_table, g2_pruning_depth)
+
+    g3_solution = solve_iidfs_pruning(g2_solver, g2_masked_cube, 14)
+
+    if g3_solution:
+        cube.rotate(str(g3_solution))
+        cube.display_cube()
+        print("Reduce to G3:")
+        print(g3_solution)
+    else:
+        print("No solution found.")
+
+
+
+    ### G3 -> G4 ###
+    solved_cube = Cube()
+
+    g3_moves = ["U2", "D2", "L2", "R2", "F2", "B2"]
+    g3_pruning_depth = 6
+
+    g3_pruning_table = gen_pruning_table(["".join(solved_cube.state)], g3_pruning_depth, g3_moves)
+
+    g3_solver = Solver(g3_is_solved, g3_moves, g3_pruning_table, g3_pruning_depth)
+
+    g4_solution = solve_iidfs_pruning(g3_solver, cube, 14)
+    t2 = default_timer()
+    
+    if g4_solution:
+        cube.rotate(str(g4_solution))
+        cube.display_cube()
+        print("Reduce to solved:")
+        print(g4_solution)
+    else:
+        print("No solution found.")
+
+    print(f"Total Time: {t2 - t1}s")
+    
+
+
+
+
+
+
+
+    # fb_pruning_depth = 5
+    
+
+    # cube = Cube()
+    # scramble = "U2 F2 D' F B2 L2 U' L' U' L2 B F' D2 F2 U' B2 L' F' D U' L' B2 L2 F B' D U' F' U2 D'"
+    # cube.rotate(scramble)
+    # cube.display_cube()
+
+    # if_state = []
+
+    # for i in range(54):
+    #     if_state.append(i)
+    # if_cube = Cube(if_state)
+
+    # fb_pieces = [12,13,14,15,16,17,21,24,41,44,45,48,51]
+    # masked_cube = mask_cube(if_cube, fb_pieces)
+    # masked_cube.display_cube()
+
+    # fb_pruning_table = gen_pruning_table(["".join(masked_cube.state)], fb_pruning_depth, htm_moves)
+
+    # masked_cube.rotate(scramble)
+    # masked_cube.display_cube()
+
+    # fb_solver = Solver(fb_is_solved, htm_moves, fb_pruning_table, fb_pruning_depth)
+
+    # t1 = default_timer()
+    # solution = solve_iidfs_pruning(fb_solver, masked_cube, 10, fb_pieces)
+    # t2 = default_timer()
+
+
+    # if solution:
+    #     print("Solution:", solution)
+    #     masked_cube.rotate(solution)
+    #     masked_cube.display_cube()
+    # else:
+    #     print("No solution found.")
+
+    # print(f"Time Elapsed: {t2 - t1}s")
 
 if __name__ == "__main__":
     main()
