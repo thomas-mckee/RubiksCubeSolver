@@ -1,5 +1,6 @@
 from move_maps import MOVES
 from timeit import default_timer
+import random
 
 class Cube:
     def __init__(self, state=None, is_if=False):
@@ -301,7 +302,8 @@ def g1_is_solved(cube):
     )
 
 def g3_is_solved(cube):
-    return all(cube.state[i] == cube.state[i - i % 3] for i in range(54))
+    solved_cube = 'UUUUUUUUULLLLLLLLLFFFFFFFFFRRRRRRRRRBBBBBBBBBDDDDDDDDD'
+    return "".join(cube.state) == solved_cube
 
 
 
@@ -311,17 +313,22 @@ def main():
     htm_moves = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "L", "L'", "L2", "R", "R'", "R2"]
     htmrwm_moves = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "r", "r'", "r2", "R", "R'", "R2", "M", "M'", "M2"]
 
-
+    
     ### G0 -> G1 ###
     g0_moves = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "L", "L'", "L2", "R", "R'", "R2"]
 
     g0_pruning_depth = 7
 
+    scramble = random.choices(g0_moves, k=21)
+    scramble = " ".join(scramble)
+
     cube = Cube()
-    scramble = "F2 D' F L' D L' B2 U' R2 U2 L2 F2 U2 F' R' L2 F' D' F' R F2 U R2 L' B2 D B' L D' B'"
+    
+    print("SCRAMBLE")
+    print(scramble)
     cube.rotate(scramble)
     cube.display_cube()
-    print("SCRAMBLE")
+    
 
     if_state = []
     for i in range(54):
@@ -330,12 +337,10 @@ def main():
 
     eo_pieces = [1,3,5,7,21,23,39,41,46,48,50,52]
     g0_masked_cube = g0_mask_cube(solved_if_cube, eo_pieces)
-    #g0_masked_cube.display_cube()
 
     g0_pruning_table = gen_pruning_table(["".join(g0_masked_cube.state)], g0_pruning_depth, g0_moves)
 
     g0_masked_cube.rotate(scramble)
-    #g0_masked_cube.display_cube()
 
     g0_solver = Solver(g0_is_solved, g0_moves, g0_pruning_table, g0_pruning_depth)
 
@@ -343,11 +348,10 @@ def main():
     g1_solution = solve_iidfs_pruning(g0_solver, g0_masked_cube, 10)
 
     if g1_solution:
-        cube.rotate(str(g1_solution))
-        cube.display_cube()
         print("Reduce to G1:")
         print(g1_solution)
-
+        cube.rotate(str(g1_solution))
+        cube.display_cube()
     else:
         print("No solution found.")
 
@@ -363,22 +367,20 @@ def main():
     eo_e_pieces = [21,23,39,41]
 
     g1_masked_cube = g1_mask_cube(solved_if_cube, co_pieces, eo_ud_pieces, eo_e_pieces)
-    #g1_masked_cube.display_cube()
 
     g1_pruning_table = gen_pruning_table(["".join(g1_masked_cube.state)], g1_pruning_depth, g1_moves)
 
     g1_masked_cube.rotate(scramble + " " + str(g1_solution))
-    #g1_masked_cube.display_cube()
 
     g1_solver = Solver(g1_is_solved, g1_moves, g1_pruning_table, g1_pruning_depth)
 
     g2_solution = solve_iidfs_pruning(g1_solver, g1_masked_cube, 10)
 
     if g2_solution:
-        cube.rotate(str(g2_solution))
-        cube.display_cube()
         print("Reduce to G2:")
         print(g2_solution)
+        cube.rotate(str(g2_solution))
+        cube.display_cube()
     else:
         print("No solution found.")
 
@@ -392,17 +394,14 @@ def main():
 
     g2_corner_table = gen_pruning_table(["".join(g2_corner_mask(solved_if_cube, corners).state)], 10, ["U2", "D2", "F2", "B2", "L2", "R2"])
     g2_masked_cube = g2_mask_cube(solved_if_cube)
-    #g2_masked_cube.display_cube()
 
     solved_states_viewed_in_g2 = list(gen_pruning_table(["".join(g2_masked_cube.state)], 10, ["U2", "D2", "F2", "B2", "L2", "R2"]).keys())
     g2_pruning_table = gen_pruning_table(solved_states_viewed_in_g2, g2_pruning_depth, g2_moves)
     g2_masked_cube.rotate(scramble + " " + str(g1_solution) + " " + str(g2_solution))
-    print(solved_states_viewed_in_g2)
+
     def g2_is_solved(cube):
-        if cube.state not in list(g2_corner_table.keys()):
-            return False
         state = "".join(cube.state)
-        return g2_pruning_table.get(state, -1) == 0
+        return state in solved_states_viewed_in_g2
 
 
     g2_solver = Solver(g2_is_solved, g2_moves, g2_pruning_table, g2_pruning_depth)
@@ -410,13 +409,12 @@ def main():
     g3_solution = solve_iidfs_pruning(g2_solver, g2_masked_cube, 14)
 
     if g3_solution:
-        cube.rotate(str(g3_solution))
-        cube.display_cube()
         print("Reduce to G3:")
         print(g3_solution)
+        cube.rotate(str(g3_solution))
+        cube.display_cube()
     else:
         print("No solution found.")
-
 
 
     ### G3 -> G4 ###
@@ -433,13 +431,15 @@ def main():
     t2 = default_timer()
     
     if g4_solution:
-        cube.rotate(str(g4_solution))
-        cube.display_cube()
         print("Reduce to solved:")
         print(g4_solution)
+        cube.rotate(str(g4_solution))
+        cube.display_cube()
     else:
         print("No solution found.")
 
+    full_solution = str(g1_solution) + " " + str(g2_solution) + " " + str(g3_solution) + " " + str(g4_solution)
+    print("\nSolver found solution: ", full_solution, "["+str(len(full_solution.split(" ")))+"]")
     print(f"Total Time: {t2 - t1}s")
     
 
