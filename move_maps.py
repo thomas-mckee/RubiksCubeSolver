@@ -108,3 +108,7 @@ MOVES = {}
 for face, base in all_base_moves.items():
     for suffix, move in generate_variants(base).items():
         MOVES[face + suffix] = move
+
+MU_MOVES = ["M", "M'", "M2", "U", "U'", "U2"]
+HTM_MOVES = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "L", "L'", "L2", "R", "R'", "R2"]
+HTMRWM_MOVES = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "r", "r'", "r2", "R", "R'", "R2", "M", "M'", "M2"]
