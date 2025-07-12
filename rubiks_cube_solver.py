@@ -14,13 +14,8 @@ class Cube:
         # Iterate over all moves in chain
         for move in moves.split(" "):
             if move != '':
-                # Get move dictionary
                 move_dict = MOVES[move.upper()]
-                
-                # Save old cube state
                 old_state = self.state.copy()
-
-                # Update cube with each move
                 for src, dst in move_dict.items():
                     self.state[dst] = old_state[src]
 
@@ -570,7 +565,7 @@ def simulate_solves(num_solves):
 
 
 def main():
-    simulate_solves(2000)
+    simulate_solves(10000)
 
 if __name__ == "__main__":
     main()
