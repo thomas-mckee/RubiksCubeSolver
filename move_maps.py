@@ -112,3 +112,10 @@ for face, base in all_base_moves.items():
 MU_MOVES = ["M", "M'", "M2", "U", "U'", "U2"]
 HTM_MOVES = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "L", "L'", "L2", "R", "R'", "R2"]
 HTMRWM_MOVES = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "r", "r'", "r2", "R", "R'", "R2", "M", "M'", "M2"]
+
+G0_MOVES = ["U","D","F","B","L","R"] 
+# G0_MOVES = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "L", "L'", "L2", "R", "R'", "R2"]
+G1_MOVES = ["U","D","F2","B2","L","R"]
+# G1_MOVES = ["U", "U'", "U2", "D", "D'", "D2", "L", "L'", "L2", "R", "R'", "R2", "F2", "B2"]
+G2_MOVES = ["U", "D", "L2", "R2", "F2", "B2"]
+G3_MOVES = ["U2", "D2", "L2", "R2", "F2", "B2"]

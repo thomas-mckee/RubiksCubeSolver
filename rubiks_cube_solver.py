@@ -1,7 +1,12 @@
-from move_maps import MOVES
+from move_maps import MOVES, G0_MOVES, G1_MOVES, G2_MOVES, G3_MOVES
 from timeit import default_timer
 import random
 import matplotlib.pyplot as plt
+
+g0_depth = 12
+g1_depth = 11
+g2_depth = 11
+g3_depth = 11
 
 class Cube:
     def __init__(self, state=None, is_if=False):
@@ -20,25 +25,6 @@ class Cube:
                     self.state[dst] = old_state[src]
 
     def is_solved(self, solver=None):
-        """
-        Checks if the cube is in a solved state.
-
-        If no solver is provided, it checks whether each face of the cube 
-        consists of a uniform color (standard solved state).
-
-        If a solver is provided, it uses the custom reference cube state and 
-        specific piece positions to determine whether the cube is solved 
-        according to those conditions.
-
-        Args:
-            solver (tuple, optional): A tuple of (solved_cube, solved_pieces), 
-                where `solved_cube` is a Cube object representing the solved state, 
-                and `solved_pieces` is a list of indices to check against.
-
-        Returns:
-            bool: True if the cube is solved according to the specified criteria, 
-                  False otherwise.
-        """
         if solver:
             solved_cube = solver[0]
             solved_pieces = solver[1]
@@ -164,7 +150,7 @@ def g0_mask_cube(if_cube, mask):
             state.append('o')
         else:
             state.append("X")
-    cube = Cube("".join(state))
+    cube = Cube("".join(state)) 
     return cube
 
 def g1_mask_cube(if_cube, co_pieces, eo_ud_pieces, eo_e_pieces):
@@ -176,7 +162,7 @@ def g1_mask_cube(if_cube, co_pieces, eo_ud_pieces, eo_e_pieces):
             state.append("y")
         else:
             state.append("X")
-    cube = Cube("".join(state))
+    cube = Cube("".join(state))    
     return cube
 
 def g2_corner_mask(if_cube, corners):
@@ -237,7 +223,6 @@ def gen_pruning_table(solved_states, depth, moveset):
                     pruning_table[new_state] = i
                     frontier.append(new_state)
         previous_frontier = frontier
-        #print(f"Depth {i} - States {len(pruning_table)}")
     return pruning_table
 
 def solve_dfs_with_pruning(solver, cube, solution, depth_remaining):
@@ -295,58 +280,55 @@ def g3_is_solved(cube):
 
 def get_random_scramble(moveset, k=20):
     scramble = []
-    last_move = moveset[0]
 
     for _ in range(k):
-        while True:
-            move = random.choice(moveset)
-            if move[0] != last_move[0]:
-                scramble.append(move)
-                last_move = move
-                break
+        move = random.choice(moveset)
+        scramble.append(move)
     return " ".join(scramble)
 
-g0_moves = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "L", "L'", "L2", "R", "R'", "R2"]
-g1_moves = ["U", "U'", "U2", "D", "D'", "D2", "L", "L'", "L2", "R", "R'", "R2", "F2", "B2"]
-g2_moves = ["U", "D", "L2", "R2", "F2", "B2"]
-g3_moves = ["U2", "D2", "L2", "R2", "F2", "B2"]
+def generate_pruning_tables():
 
-g0_depth = 7
-g1_depth = 6
-g2_depth = 6
-g3_depth = 6
+    t1 = default_timer()
 
-# Precompute solved reference cube
-solved_if_cube = Cube([i for i in range(54)])
-solved_cube = Cube()
+    # Precompute solved reference cube
+    solved_if_cube = Cube([i for i in range(54)])
+    solved_cube = Cube()
 
-# G0 pruning table (EO)
-eo_pieces = [1,3,5,7,21,23,39,41,46,48,50,52]
-g0_masked_cube = g0_mask_cube(solved_if_cube, eo_pieces)
-g0_table = gen_pruning_table(["".join(g0_masked_cube.state)], g0_depth, g0_moves)
+    # G0 pruning table (EO)
+    eo_pieces = [1,3,5,7,21,23,39,41,46,48,50,52]
+    g0_masked_cube = g0_mask_cube(solved_if_cube, eo_pieces)
+    g0_table = gen_pruning_table(["".join(g0_masked_cube.state)], g0_depth, G0_MOVES)
 
-# G1 pruning table (CO + EO split)
-co_pieces = [0,2,6,8,45,47,51,53]
-eo_ud_pieces = [1,3,5,7,46,48,50,52]
-eo_e_pieces = [21,23,39,41]
-g1_masked_cube = g1_mask_cube(solved_if_cube, co_pieces, eo_ud_pieces, eo_e_pieces)
-g1_table = gen_pruning_table(["".join(g1_masked_cube.state)], g1_depth, g1_moves)
+    # G1 pruning table (CO + EO split)
+    co_pieces = [0,2,6,8,45,47,51,53]
+    eo_ud_pieces = [1,3,5,7,46,48,50,52]
+    eo_e_pieces = [21,23,39,41]
+    g1_masked_cube = g1_mask_cube(solved_if_cube, co_pieces, eo_ud_pieces, eo_e_pieces)
+    g1_table = gen_pruning_table(["".join(g1_masked_cube.state)], g1_depth, G1_MOVES)
 
-# G2 pruning table
-g2_masked_cube = g2_mask_cube(solved_if_cube)
-g2_solved_states = list(gen_pruning_table(["".join(g2_masked_cube.state)], 10, [
-    "U2", "D2", "F2", "B2", "L2", "R2"
-]).keys())
-g2_table = gen_pruning_table(g2_solved_states, g2_depth, g2_moves)
+    # G2 pruning table
+    g2_masked_cube = g2_mask_cube(solved_if_cube)
+    g2_solved_states = list(gen_pruning_table(["".join(g2_masked_cube.state)], 10, [
+        "U2", "D2", "F2", "B2", "L2", "R2"
+    ]).keys())
+    g2_table = gen_pruning_table(g2_solved_states, g2_depth, G2_MOVES)
 
-# G3 pruning table
-g3_table = gen_pruning_table(["".join(solved_cube.state)], g3_depth, g3_moves)
+    # G3 pruning table
+    g3_table = gen_pruning_table(["".join(solved_cube.state)], g3_depth, G3_MOVES)
 
-print("Pruning tables generated.")
+    t2 = default_timer()
 
-def thistlethwaite(g0_table, g1_table, g2_table, g2_solved_states, g3_table, visualize=False):
+    print(f"Pruning tables generated in {t2-t1:.2f}s") 
 
-    scramble = get_random_scramble(g0_moves, 25)
+    return g0_table, g1_table, g2_table, g2_solved_states, g3_table
+
+
+
+def thistlethwaite(solved_if_cube, g0_table, g1_table, g2_table, g2_solved_states, g3_table, visualize=False):
+
+    t1 = default_timer()
+    
+    scramble = get_random_scramble(G0_MOVES, 25)
 
     cube = Cube()
     cube.rotate(scramble)
@@ -358,12 +340,11 @@ def thistlethwaite(g0_table, g1_table, g2_table, g2_solved_states, g3_table, vis
     g0_masked_cube = g0_mask_cube(solved_if_cube, [1,3,5,7,21,23,39,41,46,48,50,52])
     g0_masked_cube.rotate(scramble)
 
-    g0_solver = Solver(g0_is_solved, g0_moves, g0_table, g0_depth)
-    t1 = default_timer()
-    g1_solution = solve_iidfs_pruning(g0_solver, g0_masked_cube, 14)
+    g0_solver = Solver(g0_is_solved, G0_MOVES, g0_table, g0_depth)
+    g1_solution = solve_iidfs_pruning(g0_solver, g0_masked_cube, 16)
 
-    if not g1_solution:
-        return (0, 0)
+    if g1_solution is None:
+        return (scramble, 0)
 
     cube.rotate(str(g1_solution))
 
@@ -377,11 +358,11 @@ def thistlethwaite(g0_table, g1_table, g2_table, g2_solved_states, g3_table, vis
                                   [21,23,39,41])
     g1_masked_cube.rotate(scramble + " " + str(g1_solution))
 
-    g1_solver = Solver(g1_is_solved, g1_moves, g1_table, g1_depth)
-    g2_solution = solve_iidfs_pruning(g1_solver, g1_masked_cube, 14)
+    g1_solver = Solver(g1_is_solved, G1_MOVES, g1_table, g1_depth)
+    g2_solution = solve_iidfs_pruning(g1_solver, g1_masked_cube, 18)
 
-    if not g2_solution:
-        return (0, 0)
+    if g2_solution is None:
+        return (scramble, 0)
 
     cube.rotate(str(g2_solution))
 
@@ -395,11 +376,11 @@ def thistlethwaite(g0_table, g1_table, g2_table, g2_solved_states, g3_table, vis
     def g2_is_solved(cube):
         return "".join(cube.state) in g2_solved_states
 
-    g2_solver = Solver(g2_is_solved, g2_moves, g2_table, g2_depth)
-    g3_solution = solve_iidfs_pruning(g2_solver, g2_masked_cube, 18)
+    g2_solver = Solver(g2_is_solved, G2_MOVES, g2_table, g2_depth)
+    g3_solution = solve_iidfs_pruning(g2_solver, g2_masked_cube, 21)
 
-    if not g3_solution:
-        return (0, 0)
+    if g3_solution is None:
+        return (scramble, 0)
 
     cube.rotate(str(g3_solution))
 
@@ -407,12 +388,12 @@ def thistlethwaite(g0_table, g1_table, g2_table, g2_solved_states, g3_table, vis
         print(f"Reduce to G3:\n{str(g3_solution)}")
         cube.display_cube()
 
-    g3_solver = Solver(g3_is_solved, g3_moves, g3_table, g3_depth)
-    g4_solution = solve_iidfs_pruning(g3_solver, cube, 17)
+    g3_solver = Solver(g3_is_solved, G3_MOVES, g3_table, g3_depth)
+    g4_solution = solve_iidfs_pruning(g3_solver, cube, 19)
     t2 = default_timer()
 
-    if not g4_solution:
-        return (0, 0)
+    if g4_solution is None:
+        return (scramble, 0)
 
     cube.rotate(str(g4_solution))
 
@@ -421,157 +402,35 @@ def thistlethwaite(g0_table, g1_table, g2_table, g2_solved_states, g3_table, vis
         cube.display_cube()
 
     full_solution = str(g1_solution) + " " + str(g2_solution) + " " + str(g3_solution) + " " + str(g4_solution)
-    print("\nSolver found solution: ", full_solution, "["+str(len(full_solution.split(" ")))+"]")
-    print(f"Total Time: {t2 - t1}s")
-    return ((t2 - t1) * 1000, len(full_solution.split(" ")))
+    if visualize:
+        print("\nSolver found solution: ", full_solution, "["+str(len(full_solution.split(" ")))+"]")
+        print(f"Total Time: {t2 - t1:.2f}s")
 
-"""
-def thistlethwaite():
-### G0 -> G1 ###
-    g0_moves = ["U", "U'", "U2", "D", "D'", "D2", "F", "F'", "F2", "B", "B'", "B2", "L", "L'", "L2", "R", "R'", "R2"]
-
-    g0_pruning_depth = 7
-
-    scramble = get_random_scramble(g0_moves)
-
-    cube = Cube()
-    
-    #print("SCRAMBLE")
-    #print(scramble)
-    cube.rotate(scramble)
-    #cube.display_cube()
-    
-
-    if_state = []
-    for i in range(54):
-        if_state.append(i)
-    solved_if_cube = Cube(if_state)
-
-    eo_pieces = [1,3,5,7,21,23,39,41,46,48,50,52]
-    g0_masked_cube = g0_mask_cube(solved_if_cube, eo_pieces)
-
-    g0_pruning_table = gen_pruning_table(["".join(g0_masked_cube.state)], g0_pruning_depth, g0_moves)
-
-    g0_masked_cube.rotate(scramble)
-
-    g0_solver = Solver(g0_is_solved, g0_moves, g0_pruning_table, g0_pruning_depth)
-
-    t1 = default_timer()
-    g1_solution = solve_iidfs_pruning(g0_solver, g0_masked_cube, 10)
-
-    if g1_solution:
-        #print("Reduce to G1:")
-        #print(g1_solution)
-        cube.rotate(str(g1_solution))
-        #cube.display_cube()
-    else:
-        print("No solution found.")
-        return (0, 0)
-
-    # ### G1 -> G2 ###
-    g1_moves = ["U", "U'", "U2", "D", "D'", "D2", "L", "L'", "L2", "R", "R'", "R2", "F2", "B2"]
-    g1_pruning_depth = 5
-
-    co_pieces = [0,2,6,8,45,47,51,53]
-    eo_ud_pieces = [1,3,5,7,46,48,50,52]
-    eo_e_pieces = [21,23,39,41]
-
-    g1_masked_cube = g1_mask_cube(solved_if_cube, co_pieces, eo_ud_pieces, eo_e_pieces)
-
-    g1_pruning_table = gen_pruning_table(["".join(g1_masked_cube.state)], g1_pruning_depth, g1_moves)
-
-    g1_masked_cube.rotate((scramble + " " + str(g1_solution)).rstrip())
-
-    g1_solver = Solver(g1_is_solved, g1_moves, g1_pruning_table, g1_pruning_depth)
-
-    g2_solution = solve_iidfs_pruning(g1_solver, g1_masked_cube, 10)
-
-    if g2_solution:
-        #print("Reduce to G2:")
-        #print(g2_solution)
-        cube.rotate(str(g2_solution))
-        #cube.display_cube()
-    else:
-        print("No solution found.")
-        return (0, 0)
+    return  ((t2 - t1) * 1000, len(full_solution.split(" ")))
 
 
-    ### G2 -> G3 ###
-    g2_moves = ["U", "D", "L2", "R2", "F2", "B2"]
-    g2_pruning_depth = 5
-
-    corners = [0,2,6,8,9,11,15,17,18,20,24,26,27,29,33,35,36,38,42,44,45,47,51,53]
-
-    #g2_corner_table = gen_pruning_table(["".join(g2_corner_mask(solved_if_cube, corners).state)], 10, ["U2", "D2", "F2", "B2", "L2", "R2"])
-    g2_masked_cube = g2_mask_cube(solved_if_cube)
-
-    solved_states_viewed_in_g2 = list(gen_pruning_table(["".join(g2_masked_cube.state)], 10, ["U2", "D2", "F2", "B2", "L2", "R2"]).keys())
-    g2_pruning_table = gen_pruning_table(solved_states_viewed_in_g2, g2_pruning_depth, g2_moves)
-    g2_masked_cube.rotate((scramble + " " + str(g1_solution) + " " + str(g2_solution)).rstrip())
-
-    def g2_is_solved(cube):
-        state = "".join(cube.state)
-        return state in solved_states_viewed_in_g2
-
-
-    g2_solver = Solver(g2_is_solved, g2_moves, g2_pruning_table, g2_pruning_depth)
-
-    g3_solution = solve_iidfs_pruning(g2_solver, g2_masked_cube, 14)
-
-    if g3_solution:
-        #print("Reduce to G3:")
-        #print(g3_solution)
-        cube.rotate(str(g3_solution))
-        #cube.display_cube()
-    else:
-        print("No solution found.")
-        return (0, 0)
-
-    ### G3 -> G4 ###
-    solved_cube = Cube()
-
-    g3_moves = ["U2", "D2", "L2", "R2", "F2", "B2"]
-    g3_pruning_depth = 6
-
-    g3_pruning_table = gen_pruning_table(["".join(solved_cube.state)], g3_pruning_depth, g3_moves)
-
-    g3_solver = Solver(g3_is_solved, g3_moves, g3_pruning_table, g3_pruning_depth)
-
-    g4_solution = solve_iidfs_pruning(g3_solver, cube, 14)
-    t2 = default_timer()
-    
-    if g4_solution:
-        #print("Reduce to solved:")
-        #print(g4_solution)
-        cube.rotate(str(g4_solution))
-        #cube.display_cube()
-    else:
-        print("No solution found.")
-        return (0, 0)
-
-    full_solution = str(g1_solution) + " " + str(g2_solution) + " " + str(g3_solution) + " " + str(g4_solution)
-    print("\nSolver found solution: ", full_solution, "["+str(len(full_solution.split(" ")))+"]")
-    print(f"Total Time: {t2 - t1}s")
-
-    return ((t2 - t1) * 1000, len(full_solution.split(" ")))
-
-"""
-    
-def simulate_solves(num_solves):
+def simulate_solves(num_solves, g0_table, g1_table, g2_table, g2_solved_states, g3_table):
     times = []
     num_moves = []
+    unsolved_scramble = []
     num_solved = 0
+
+    solved_if_cube = Cube([i for i in range(54)])
 
     for i in range(num_solves):
         if i % 100 == 0:
             print(f"{i}/{num_solves}")
-        time, moves = thistlethwaite(g0_table, g1_table, g2_table, g2_solved_states, g3_table)
+        time, moves = thistlethwaite(solved_if_cube, g0_table, g1_table, g2_table, g2_solved_states, g3_table)
         if moves:
             num_solved += 1
-        times.append(time)
-        num_moves.append(moves)
-
+            times.append(time)
+            num_moves.append(moves)
+        else:
+            unsolved_scramble.append(time)
+        
     print(f"{num_solved*100/num_solves}% solved")
+    print(f"Average Time: {sum(times)/num_solved} ms")
+    print(f"Average Moves: {sum(num_moves)/num_solved} seconds")
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
@@ -590,8 +449,14 @@ def simulate_solves(num_solves):
 
 
 def main():
-    thistlethwaite(g0_table, g1_table, g2_table, g2_solved_states, g3_table, visualize=True)
-    #simulate_solves(10000)
+
+    g0_table, g1_table, g2_table, g2_solved_states, g3_table = generate_pruning_tables()
+
+    solved_if_cube = Cube([i for i in range(54)])
+
+    thistlethwaite(solved_if_cube, g0_table, g1_table, g2_table, g2_solved_states, g3_table, visualize=True)
+    
+    # simulate_solves(100000, g0_table, g1_table, g2_table, g2_solved_states, g3_table)
 
 if __name__ == "__main__":
     main()
