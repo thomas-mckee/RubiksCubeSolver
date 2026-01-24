@@ -16,7 +16,7 @@ class Cube:
             self.state = list('UUUUUUUUULLLLLLLLLFFFFFFFFFRRRRRRRRRBBBBBBBBBDDDDDDDDD')
                             
     def rotate(self, moves):
-        # Iterate over all moves in chain
+        # iterate over all moves in chain
         for move in moves.split(" "):
             if move != '':
                 move_dict = MOVES[move.upper()]
@@ -50,7 +50,6 @@ class Cube:
         
 
     def display_cube(self):
-        """Prints the cube in 2D net layout to the console with color emojis."""
         s = self.state  
 
         color_map = {
@@ -176,24 +175,20 @@ def g2_corner_mask(if_cube, corners):
     return cube
 
 def g2_mask_cube(if_cube):
-    # Map each face to its starting index
     face_base = {'U': 0, 'L': 9, 'F': 18, 'R': 27, 'B': 36, 'D': 45}
 
-    # Define corner permutation positions (face-relative)
     cp_facelets = [0, 2, 6, 8]  # edges of the face (not centers)
     cp_faces = ['U', 'D', 'F', 'B', 'L', 'R']
     cp_pieces = [face_base[f] + i for f in cp_faces for i in cp_facelets]
 
-    # Define edge permutation positions on F/B/L/R faces only
     ep_facelets = [1, 3, 5, 7]  # side edge stickers
     ep_faces = ['F', 'B', 'L', 'R']
     ep_pieces = [face_base[f] + i for f in ep_faces for i in ep_facelets]
 
-    # Function to simplify opposite face color collapse
     def collapse_face(f):
         return {'B': 'F', 'L': 'R'}.get(f, f)
 
-    # Create the masked state
+    # create the masked state
     masked = []
     for idx in if_cube.state:
         face = "ULFRBD"[idx // 9]  # get face from index
@@ -231,14 +226,14 @@ def solve_dfs_with_pruning(solver, cube, solution, depth_remaining):
     if depth_remaining == 0:
         return None
 
-    # Mask the cube for pruning table lookup
+    # mask the cube for pruning table lookup
     lower_bound = solver.pruning_table.get("".join(cube.state), solver.pruning_depth + 1)
     if lower_bound > depth_remaining:
         return None
 
     for move in solver.moves:
         if solution and move[0] == solution[-1][0]:
-            continue  # Skip same-face moves
+            continue  # skip same-face moves
         new_cube = cube.copy()
         new_cube.rotate(move)
         solution.append(move)
@@ -290,7 +285,7 @@ def generate_pruning_tables():
 
     t1 = default_timer()
 
-    # Precompute solved reference cube
+    # precompute solved reference cube
     solved_if_cube = Cube([i for i in range(54)])
     solved_cube = Cube()
 
